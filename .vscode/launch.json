@@ -5,14 +5,14 @@
             "name": "(lldb) Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/JackAnalyzer",
-            "args": ["${workspaceFolder}/test.jack"],
+            "program": "${workspaceFolder}/DangAnalyzer",
+            "args": ["${workspaceFolder}/test.dang"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
             "externalConsole": false,
             "MIMode": "lldb",
-            "preLaunchTask": "build JackAnalyzer"
+            "preLaunchTask": "build DangAnalyzer"
         }
     ]
 }

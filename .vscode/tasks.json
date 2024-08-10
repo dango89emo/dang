@@ -3,14 +3,16 @@
     "tasks": [
         {
             "type": "shell",
-            "label": "build JackAnalyzer",
+            "label": "build DangAnalyzer",
             "command": "/usr/bin/g++",
             "args": [
                 "-g",
                 "-std=c++17",
-                "${workspaceFolder}/JackAnalyzer.cpp",
+                "${workspaceFolder}/DangAnalyzer.cpp",
+                "${workspaceFolder}/XMLGenerator.cpp",
+                "${workspaceFolder}/DangTokenizer.cpp",
                 "-o",
-                "${workspaceFolder}/JackAnalyzer"
+                "${workspaceFolder}/DangAnalyzer"
             ],
             "options": {
                 "cwd": "${workspaceFolder}"
