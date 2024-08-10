@@ -1,2 +1,3 @@
-JackAnalyzer*
+DangAnalyzer*
 !*.cpp
+output.xml
