@@ -10,6 +10,7 @@
                 "-std=c++17",
                 "${workspaceFolder}/DangAnalyzer.cpp",
                 "${workspaceFolder}/XMLGenerator.cpp",
+                "${workspaceFolder}/CompilationEngine.cpp",
                 "${workspaceFolder}/DangTokenizer.cpp",
                 "-o",
                 "${workspaceFolder}/DangAnalyzer"

@@ -1,5 +1,5 @@
-#ifndef JACK_TOKENIZER_HPP
-#define JACK_TOKENIZER_HPP
+#ifndef DANG_TOKENIZER_HPP
+#define DANG_TOKENIZER_HPP
 
 #include <vector>
 #include <string>

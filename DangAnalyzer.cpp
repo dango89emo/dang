@@ -3,6 +3,7 @@
 #include <string>
 #include <algorithm>
 #include "DangTokenizer.hpp"
+#include "CompilationEngine.hpp"
 #include "XMLGenerator.hpp"
 
 class DangAnalyzer {
@@ -16,6 +17,9 @@ public:
         std::string rootTag = "tokens";
         XMLGenerator generator(rootTag);
         std::string input;
+        std::string pathToTokensXML = "tokens.xml";
+        std::string pathToParsedXML = "parsed.xml";
+
         DangTokenizer tokenizer(filePath);
         while (tokenizer.hasMoreTokens()) {
             tokenizer.advance();
@@ -32,7 +36,10 @@ public:
                 generator.addElement("stringConstant", tokenizer.stringVal());
             }
         }
-        generator.generateXML("output.xml");
+        generator.generateXML(pathToTokensXML);
+        
+        CompilationEngine parser(pathToTokensXML, pathToParsedXML);
+        parser.compileClass();
     }
 };
 

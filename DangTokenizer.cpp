@@ -16,7 +16,7 @@ std::string DangTokenizer::readFile(const std::string& filePath) {
 }
 
 void DangTokenizer::tokenize(const std::string& input) {
-    std::string cleanedInput = removeComments(input);
+    std::string cleanedInput = removeComments(input); 
     std::sregex_iterator it(cleanedInput.begin(), cleanedInput.end(), tokenRegex);
     std::sregex_iterator end;
     while (it != end) {
@@ -30,9 +30,9 @@ void DangTokenizer::tokenize(const std::string& input) {
 }
 
 std::string DangTokenizer::removeComments(const std::string& input) {
-    std::regex singleLineComment(R"(//.*?(?:\n|$))");
+    std::regex singleLineComment(R"(//[^\n]*(?:\n|$))");
     std::regex multiLineComment(R"(/\*[\s\S]*?\*/)");
-    std::string noSingleLineComments = std::regex_replace(input, singleLineComment, "\n");
+    std::string noSingleLineComments = std::regex_replace(input, singleLineComment, "");
     return std::regex_replace(noSingleLineComments, multiLineComment, "");
 }
 

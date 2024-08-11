@@ -6,7 +6,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/DangAnalyzer",
-            "args": ["${workspaceFolder}/test.dang"],
+            "args": ["${workspaceFolder}/tests/ArrayTest/Main.jack"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
