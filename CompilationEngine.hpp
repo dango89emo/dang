@@ -10,6 +10,10 @@ private:
     std::shared_ptr<XMLElement> input_root;
     std::shared_ptr<XMLGenerator> output;
     std::string xmlPath;
+    std::string className;
+    int i = 0;
+    bool isInList(const std::vector<std::string>& list, const std::string& target);
+    bool isType(std::shared_ptr<XMLElement> element);
 
 public:
     CompilationEngine(const std::string& inputPath, const std::string& outputPath);

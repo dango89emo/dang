@@ -5,7 +5,15 @@
 #include <vector>
 #include <memory>
 #include <fstream>
+#include <iostream>
+#include <algorithm>
 #include "XMLGenerator.hpp"
+
+
+std::string removeWhitespace(std::string str) {
+    str.erase(std::remove_if(str.begin(), str.end(), ::isspace), str.end());
+    return str;
+}
 
 XMLGenerator::XMLGenerator(const std::string& rootTag) : root(std::make_shared<XMLElement>(rootTag)) {}
 
@@ -104,7 +112,8 @@ std::shared_ptr<XMLElement> XMLGenerator::parseXML(const std::string& filename) 
             size_t contentEnd = content.find('<', contentStart);
             if (contentEnd != std::string::npos) {
                 std::string elementContent = content.substr(contentStart, contentEnd - contentStart);
-                currentElement->content = elementContent;
+                std::string cleanedContent = removeWhitespace(elementContent);
+                currentElement->content = cleanedContent;
             }
         }
 

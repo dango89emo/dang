@@ -37,7 +37,6 @@ std::string DangTokenizer::removeComments(const std::string& input) {
 }
 
 
-
 DangTokenizer::DangTokenizer(const std::string& filePath) : currentIndex(0) {
     std::string fileContent = readFile(filePath);
     tokenize(fileContent);
