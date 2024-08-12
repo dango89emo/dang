@@ -9,9 +9,10 @@
 
 class CompilationEngine {
 private:
-    std::shared_ptr<XMLElement> input_root;
+    std::vector<std::shared_ptr<XMLElement>> children;
     std::shared_ptr<XMLGenerator> output;
-    std::string xmlPath; 
+    std::shared_ptr<XMLElement> currentElement;
+    std::string xmlPath;
     int i = 0;
 
     bool isInList(const std::vector<std::string>& list, const std::string& target);

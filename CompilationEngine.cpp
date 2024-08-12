@@ -8,15 +8,13 @@
 
 
 CompilationEngine::CompilationEngine(const std::string& inputPath, const std::string& outputPath){
-    input_root = XMLGenerator::parseXML(inputPath);
+    children = XMLGenerator::parseXML(inputPath)->children;
     std::shared_ptr<XMLGenerator> p(new XMLGenerator("class"));
     output = p;
     xmlPath = outputPath;
 }
 
 void CompilationEngine::compileClass(){
-    
-    std::vector<std::shared_ptr<XMLElement>> children = input_root->children;
     if (children[i]->tagName != "keyword" | children[i]->content != "class") {
         std::cerr << "モジュールのトップレベルはclassにしてください" << std::endl;
         exit(1);
@@ -37,23 +35,21 @@ void CompilationEngine::compileClass(){
     for (int j=0; j < i; j++){
         classElement->addChild(children[j]);
     }
-     
     compileClassVarDec();
     compileSubroutine();
 
-    // if(children[i]->tagName!="symbol" | children[i]->content != "}"){
-    //     std::cerr << "classの定義には最後に'}'が必要です" << std::endl; 
-    //     exit(1);
-    // }
-    // classElement->addChild(children[i]);
+    if(children[i]->tagName!="symbol" | children[i]->content != "}"){
+        std::cerr << "classの定義には最後に'}'が必要です" << std::endl; 
+        exit(1);
+    }
+    classElement->addChild(children[i]);
     output->generateXML(xmlPath);
 }
 
 void CompilationEngine::compileClassVarDec(){
-    std::vector<std::shared_ptr<XMLElement>> children = input_root->children;
-
+    // class変数をコンパイルする
+    int startPoint = i;
     while (true) {
-        int startPoint = i;
         if (children[i]->content != "static" && children[i]->content != "field"){
             break;
         }
@@ -81,6 +77,8 @@ void CompilationEngine::compileClassVarDec(){
             exit(1);
         }
         i++;
+    
+        // もしも要素が進んでいるのであれば、classVarDecをコンパイルする.
         output->addElement("classVarDec");
         std::shared_ptr<XMLElement> classVarDec = output->getRoot()->children.back(); 
         for (int j = startPoint; j < i; j++) {
@@ -89,35 +87,12 @@ void CompilationEngine::compileClassVarDec(){
     }
 }
 
-bool CompilationEngine::isType(std::shared_ptr<XMLElement> element) {
-    std::vector<std::string> typeList = {"int", "char", "boolean"};
-    std::cout << element->tagName << element->content << std::endl;
-    // 予約語の型名のパターン
-    if (element->tagName == "keyword" && isInList(typeList, element->content)) {
-        return true;
-    }
-
-    // クラス名のパターン
-    if (element->tagName == "identifier" && isInList(classNames, element->content)){
-        return true;
-    }
-    return false;
-}
-
 void CompilationEngine::compileSubroutine(){
-    std::vector<std::shared_ptr<XMLElement>> children = input_root->children;
     int startPoint = i;
-    std::vector<std::string> subroutineKeywords = {"constructor", "function", "method"};
+    const std::vector<std::string> subroutineKeywords = {"constructor", "function", "method"};
     while (true) {
-        if (i == startPoint) {
-            if (children[i]->tagName != "keyword" | !isInList(subroutineKeywords, children[i]->content)){
-                std::cerr << "サブルーチンの種類を指定してください" << std::endl;
-                exit(1);
-            }
-        } else {
-            if (children[i]->tagName != "keyword" | !isInList(subroutineKeywords, children[i]->content)){
-                break;
-            }
+        if (children[i]->tagName != "keyword" | !isInList(subroutineKeywords, children[i]->content)){
+            break;
         }
         i++;
 
@@ -149,30 +124,29 @@ void CompilationEngine::compileSubroutine(){
             exit(1);
         }
         i++;
+        for (int j = startPoint; j < i; j++) {
+            subroutineDec->addChild(children[j]);
+        }
+        currentElement = std::shared_ptr<XMLElement>(new XMLElement("subroutineBody"));
         if (children[i]->tagName != "symbol" | children[i]->content != "{"){
             std::cerr << "サブルーチンの記述には'{'が必要です。" << std::endl;
             exit(1);
         }
+        currentElement->addChild(children[i]);
         i++;
-        for (int j = startPoint; j < i; j++) {
-            subroutineDec->addChild(children[j]);
-        }
-        subroutineDec->addChild(
-            std::shared_ptr<XMLElement>(new XMLElement("subroutineBody"))
-            );
         compileVarDec();
         compileStatements();
-        // if (children[i]->tagName != "symbol" | children[i]->content != "}"){
-        //     std::cerr << "サブルーチンの記述には'}'が必要です。" << std::endl;
-        //     exit(1);
-        // }
-        // subroutineDec->addChild(children[i]);
+        if (children[i]->tagName != "symbol" | children[i]->content != "}"){
+            std::cerr << "サブルーチンの記述には'}'が必要です。" << std::endl;
+            exit(1);
+        }
+        subroutineDec->addChild(children[i]);
+        subroutineDec->addChild(currentElement);
         i++;
     }
 }
 
 void CompilationEngine::compileParameterList(){
-    std::vector<std::shared_ptr<XMLElement>> children = input_root->children;
     std::shared_ptr<XMLElement> subroutineDec = output->getRoot()->children.back(); 
     subroutineDec->addChild(
             std::shared_ptr<XMLElement>(new XMLElement("parameterList"))
@@ -186,7 +160,8 @@ void CompilationEngine::compileParameterList(){
             exit(1);
         }
         i++;
-        if (children[i]->tagName !="symbol" | children[i]->content!=","){break;}
+        if (children[i]->tagName !="symbol" | children[i]->content != ","){ break; }
+        i++;
     }
     if(startPoint==i){return;}
     for(int j = startPoint ; j < i; j++){
@@ -194,8 +169,6 @@ void CompilationEngine::compileParameterList(){
     }
 }
 void CompilationEngine::compileVarDec(){
-    std::vector<std::shared_ptr<XMLElement>> children = input_root->children;
-    std::shared_ptr<XMLElement> subroutineBody = output->getRoot()->children.back()->children.back();
 
     while (true) {
         int startPoint = i;
@@ -225,19 +198,17 @@ void CompilationEngine::compileVarDec(){
             exit(1);
         }
         i++;
-        subroutineBody->addChild(std::make_shared<XMLElement>("varDec"));
-        std::shared_ptr<XMLElement> varDec = subroutineBody->children.back();
+        std::shared_ptr<XMLElement> varDec(new XMLElement("varDec"));
         for (int j = startPoint; j < i; j++) {
             varDec->addChild(children[j]);
         }
+        currentElement->addChild(varDec);
     }
 }
 
 void CompilationEngine::compileStatements(){
-    std::shared_ptr<XMLElement> subroutineBody = output->getRoot()->children.back()->children.back();
-    subroutineBody->addChild(std::make_shared<XMLElement>("statements"));
-    std::shared_ptr<XMLElement> currentElement = subroutineBody->children.back();
-    std::vector<std::shared_ptr<XMLElement>> children = input_root->children;
+    std::shared_ptr<XMLElement> currentElementBuffer = currentElement;
+    currentElement = std::shared_ptr<XMLElement> (new XMLElement("statements"));
 
     while (true) {
         if (children[i]->tagName != "keyword") {
@@ -258,15 +229,16 @@ void CompilationEngine::compileStatements(){
             break;
         }
     }
+    currentElementBuffer->addChild(currentElement);
+    currentElement = currentElementBuffer;
 }
 
 void CompilationEngine::compileLet() {
-    std::shared_ptr<XMLElement> subroutineBody = output->getRoot()->children.back()->children.back();
-    subroutineBody->addChild(std::make_shared<XMLElement>("statements"));
-    std::shared_ptr<XMLElement> currentElement = subroutineBody->children.back();
-    std::vector<std::shared_ptr<XMLElement>> children = input_root->children;
-    int startPoint = i;
+    std::shared_ptr<XMLElement> currentElementBuffer = currentElement;
+    currentElement = std::make_shared<XMLElement>("letStatement");
+
     i++; // 'let' キーワードをスキップ
+    int startPoint = i;
 
     if (children[i]->tagName != "identifier") {
         std::cerr << "変数名を指定してください" << std::endl;
@@ -276,7 +248,11 @@ void CompilationEngine::compileLet() {
 
     if (children[i]->content == "[") {
         i++;
+        for (int j = startPoint; j < i; j++) {
+            currentElement->addChild(children[j]);
+        }
         compileExpression();
+        startPoint = i;
         if (children[i]->content != "]") {
             std::cerr << "配列アクセスには']'が必要です" << std::endl;
             exit(1);
@@ -290,36 +266,40 @@ void CompilationEngine::compileLet() {
     }
     i++;
 
+    for (int j = startPoint; j < i; j++) {
+        currentElement->addChild(children[j]);
+    }
     compileExpression();
-
+    startPoint = i;
+    
     if (children[i]->content != ";") {
-        std::cerr << "文の終わりには';'が必要です" << std::endl;
+        std::cerr << "let 文の終わりには';'が必要です" << std::endl;
         exit(1);
     }
     i++;
-
-    auto letStatement = std::make_shared<XMLElement>("letStatement");
     for (int j = startPoint; j < i; j++) {
-        letStatement->addChild(children[j]);
+        currentElement->addChild(children[j]);
     }
-    currentElement->addChild(letStatement);
+    currentElementBuffer->addChild(currentElement);
+    currentElement = currentElementBuffer;
 }
 
 void CompilationEngine::compileIf() {
-    std::shared_ptr<XMLElement> subroutineBody = output->getRoot()->children.back()->children.back();
-    subroutineBody->addChild(std::make_shared<XMLElement>("statements"));
-    std::shared_ptr<XMLElement> currentElement = subroutineBody->children.back();
-    std::vector<std::shared_ptr<XMLElement>> children = input_root->children;
-    int startPoint = i;
+    std::shared_ptr<XMLElement> currentElementBuffer = currentElement;
+    currentElement = std::make_shared<XMLElement>("ifStatement");
+    
     i++; // 'if' キーワードをスキップ
+    int startPoint = i;
 
     if (children[i]->content != "(") {
         std::cerr << "条件式には'('が必要です" << std::endl;
         exit(1);
     }
     i++;
-
+    
+    for (int j = startPoint; j < i; j++) {currentElement->addChild(children[j]);}
     compileExpression();
+    startPoint = i;
 
     if (children[i]->content != ")") {
         std::cerr << "条件式には')'が必要です" << std::endl;
@@ -333,7 +313,9 @@ void CompilationEngine::compileIf() {
     }
     i++;
 
+    for (int j = startPoint; j < i; j++) {currentElement->addChild(children[j]);}
     compileStatements();
+    startPoint = i;
 
     if (children[i]->content != "}") {
         std::cerr << "if文の本体には'}'が必要です" << std::endl;
@@ -348,8 +330,10 @@ void CompilationEngine::compileIf() {
             exit(1);
         }
         i++;
-
+        
+        for (int j = startPoint; j < i; j++) {currentElement->addChild(children[j]);}
         compileStatements();
+        startPoint = i;
 
         if (children[i]->content != "}") {
             std::cerr << "else文の本体には'}'が必要です" << std::endl;
@@ -358,22 +342,20 @@ void CompilationEngine::compileIf() {
         i++;
     }
 
-    auto ifStatement = std::make_shared<XMLElement>("ifStatement");
     for (int j = startPoint; j < i; j++) {
-        ifStatement->addChild(children[j]);
+        currentElement->addChild(children[j]);
     }
-    currentElement->addChild(ifStatement);
+    currentElementBuffer->addChild(currentElement);
+    currentElement = currentElementBuffer;
 }
 
 
 void CompilationEngine::compileWhile() {
-    std::shared_ptr<XMLElement> subroutineBody = output->getRoot()->children.back()->children.back();
-    subroutineBody->addChild(std::make_shared<XMLElement>("statements"));
-    std::shared_ptr<XMLElement> currentElement = subroutineBody->children.back();
-    std::vector<std::shared_ptr<XMLElement>> children = input_root->children;
+    std::shared_ptr<XMLElement> currentElementBuffer = currentElement;
+    currentElement = std::make_shared<XMLElement>("whileStatement");
 
-    int startPoint = i;
     i++; // 'while' キーワードをスキップ
+    int startPoint = i;
 
     if (children[i]->content != "(") {
         std::cerr << "while文の条件式には'('が必要です" << std::endl;
@@ -381,7 +363,9 @@ void CompilationEngine::compileWhile() {
     }
     i++;
 
+    for (int j = startPoint; j < i; j++) {currentElement->addChild(children[j]);}
     compileExpression();
+    startPoint = i;
 
     if (children[i]->content != ")") {
         std::cerr << "while文の条件式には')'が必要です" << std::endl;
@@ -395,7 +379,9 @@ void CompilationEngine::compileWhile() {
     }
     i++;
 
+    for (int j = startPoint; j < i; j++) {currentElement->addChild(children[j]);}
     compileStatements();
+    startPoint = i;
 
     if (children[i]->content != "}") {
         std::cerr << "while文の本体には'}'が必要です" << std::endl;
@@ -403,22 +389,21 @@ void CompilationEngine::compileWhile() {
     }
     i++;
 
-    auto whileStatement = std::make_shared<XMLElement>("whileStatement");
     for (int j = startPoint; j < i; j++) {
-        whileStatement->addChild(children[j]);
+        currentElement->addChild(children[j]);
     }
-    currentElement->addChild(whileStatement);
+    currentElementBuffer->addChild(currentElement);
+    currentElement = currentElementBuffer;
 }
 
 void CompilationEngine::compileDo() {
-    std::shared_ptr<XMLElement> subroutineBody = output->getRoot()->children.back()->children.back();
-    subroutineBody->addChild(std::make_shared<XMLElement>("statements"));
-    std::shared_ptr<XMLElement> currentElement = subroutineBody->children.back();
-    std::vector<std::shared_ptr<XMLElement>> children = input_root->children;
-    int startPoint = i;
+    std::shared_ptr<XMLElement> currentElementBuffer = currentElement;
+    currentElement = std::make_shared<XMLElement>("doStatement");
+    
     i++; // 'do' キーワードをスキップ
 
     compileSubroutineCall();
+    int startPoint = i;
 
     if (children[i]->content != ";") {
         std::cerr << "do文の終わりには';'が必要です" << std::endl;
@@ -426,24 +411,23 @@ void CompilationEngine::compileDo() {
     }
     i++;
 
-    auto doStatement = std::make_shared<XMLElement>("doStatement");
     for (int j = startPoint; j < i; j++) {
-        doStatement->addChild(children[j]);
+        currentElement->addChild(children[j]);
     }
-    currentElement->addChild(doStatement);
+    currentElementBuffer->addChild(currentElement);
+    currentElement = currentElementBuffer;
 }
 
 void CompilationEngine::compileReturn() {
-    std::shared_ptr<XMLElement> subroutineBody = output->getRoot()->children.back()->children.back();
-    subroutineBody->addChild(std::make_shared<XMLElement>("statements"));
-    std::shared_ptr<XMLElement> currentElement = subroutineBody->children.back();
-    std::vector<std::shared_ptr<XMLElement>> children = input_root->children;
-    int startPoint = i;
+    std::shared_ptr<XMLElement> currentElementBuffer = currentElement;
+    currentElement = std::make_shared<XMLElement>("returnStatement");
+    
     i++; // 'return' キーワードをスキップ
 
     if (children[i]->content != ";") {
         compileExpression();
     }
+    int startPoint = i;
 
     if (children[i]->content != ";") {
         std::cerr << "return文の終わりには';'が必要です" << std::endl;
@@ -451,89 +435,77 @@ void CompilationEngine::compileReturn() {
     }
     i++;
 
-    auto returnStatement = std::make_shared<XMLElement>("returnStatement");
     for (int j = startPoint; j < i; j++) {
-        returnStatement->addChild(children[j]);
+        currentElement->addChild(children[j]);
     }
-    currentElement->addChild(returnStatement);
+    currentElementBuffer->addChild(currentElement);
+    currentElement = currentElementBuffer;
 }
 
 void CompilationEngine::compileExpression() {
-    std::shared_ptr<XMLElement> subroutineBody = output->getRoot()->children.back()->children.back();
-    subroutineBody->addChild(std::make_shared<XMLElement>("statements"));
-    std::shared_ptr<XMLElement> currentElement = subroutineBody->children.back();
-    std::vector<std::shared_ptr<XMLElement>> children = input_root->children;
-    auto expressionElement = std::make_shared<XMLElement>("expression");
-    
-    currentElement->addChild(expressionElement);
-    
-    auto prevElement = currentElement;
-    currentElement = expressionElement;
+    std::shared_ptr<XMLElement> currentElementBuffer = currentElement;
+    currentElement = std::make_shared<XMLElement>("expression");
 
     compileTerm();
 
     while (children[i]->tagName == "symbol" && isOperator(children[i]->content)) {
-        expressionElement->addChild(children[i]);
+        currentElement->addChild(children[i]);
         i++;
         compileTerm();
     }
-
-    currentElement = prevElement;
+    currentElementBuffer = currentElement;
 }
 
 void CompilationEngine::compileTerm() {
-    std::shared_ptr<XMLElement> subroutineBody = output->getRoot()->children.back()->children.back();
-    subroutineBody->addChild(std::make_shared<XMLElement>("statements"));
-    std::shared_ptr<XMLElement> currentElement = subroutineBody->children.back();
-    std::vector<std::shared_ptr<XMLElement>> children = input_root->children;
-    auto termElement = std::make_shared<XMLElement>("term");
-    currentElement->addChild(termElement);
+    std::shared_ptr<XMLElement> currentElementBuffer = currentElement;
+    currentElement = std::make_shared<XMLElement>("term");
+    
 
     if (children[i]->tagName == "integerConstant" || children[i]->tagName == "stringConstant" || 
         (children[i]->tagName == "keyword" && isKeywordConstant(children[i]->content))) {
-        termElement->addChild(children[i]);
+        currentElement->addChild(children[i]);
         i++;
     } else if (children[i]->tagName == "identifier") {
-        termElement->addChild(children[i]);
+        currentElement->addChild(children[i]);
         i++;
         if (children[i]->content == "[") {
-            termElement->addChild(children[i]);
+            currentElement->addChild(children[i]);
             i++;
             compileExpression();
             if (children[i]->content != "]") {
                 std::cerr << "配列アクセスには']'が必要です" << std::endl;
                 exit(1);
             }
-            termElement->addChild(children[i]);
+            currentElement->addChild(children[i]);
             i++;
         } else if (children[i]->content == "(" || children[i]->content == ".") {
             i--; // サブルーチン呼び出しの開始位置に戻る
             compileSubroutineCall();
         }
     } else if (children[i]->content == "(") {
-        termElement->addChild(children[i]);
+        currentElement->addChild(children[i]);
         i++;
         compileExpression();
         if (children[i]->content != ")") {
             std::cerr << "括弧式には')'が必要です" << std::endl;
             exit(1);
         }
-        termElement->addChild(children[i]);
+        currentElement->addChild(children[i]);
         i++;
     } else if (children[i]->content == "-" || children[i]->content == "~") {
-        termElement->addChild(children[i]);
+        currentElement->addChild(children[i]);
         i++;
         compileTerm();
     } else {
         std::cerr << "不正な項です" << std::endl;
         exit(1);
     }
+    currentElementBuffer->addChild(currentElement);
+    currentElement = currentElementBuffer;
 }
 
 void CompilationEngine::compileSubroutineCall() {
-    std::shared_ptr<XMLElement> subroutineBody = output->getRoot()->children.back()->children.back();
-    std::shared_ptr<XMLElement> currentElement = subroutineBody->children.back();
-    std::vector<std::shared_ptr<XMLElement>> children = input_root->children;
+    
     if (children[i + 1]->content == ".") {
         // クラス名またはオブジェクト名
         currentElement->addChild(children[i]);
@@ -542,9 +514,15 @@ void CompilationEngine::compileSubroutineCall() {
         currentElement->addChild(children[i]);
         i++;
     }
+
+    if (children[i]->tagName != "identifier") {
+        std::cerr << "サブルーチン名を指定してください" << std::endl;
+        exit(1);
+    }
     // サブルーチン名
     currentElement->addChild(children[i]);
     i++;
+
     // '('
     if (children[i]->content != "(") {
         std::cerr << "サブルーチン呼び出しには'('が必要です" << std::endl;
@@ -565,14 +543,8 @@ void CompilationEngine::compileSubroutineCall() {
 }
 
 void CompilationEngine::compileExpressionList() {
-    std::shared_ptr<XMLElement> subroutineBody = output->getRoot()->children.back()->children.back();
-    std::shared_ptr<XMLElement> currentElement = subroutineBody->children.back();
-    std::vector<std::shared_ptr<XMLElement>> children = input_root->children;
-    auto expressionListElement = std::make_shared<XMLElement>("expressionList");
-    currentElement->addChild(expressionListElement);
-
-    auto prevElement = currentElement;
-    currentElement = expressionListElement;
+    std::shared_ptr<XMLElement> currentElementBuffer = currentElement;
+    currentElement = std::make_shared<XMLElement>("expressionList");
 
     if (children[i]->content != ")") {
         compileExpression();
@@ -583,11 +555,11 @@ void CompilationEngine::compileExpressionList() {
         }
     }
 
-    currentElement = prevElement;
+    currentElement = currentElementBuffer;
 }
 
 bool CompilationEngine::isOperator(const std::string& symbol) {
-    static const std::vector<std::string> operators = {"+", "-", "*", "/", "&", "|", "<", ">", "="};
+    static const std::vector<std::string> operators = {"+", "-", "*", "/", "&amp;", "|", "&lt;", "&gt;", "="};
     return std::find(operators.begin(), operators.end(), symbol) != operators.end();
 }
 
@@ -598,4 +570,19 @@ bool CompilationEngine::isKeywordConstant(const std::string& keyword) {
 
 bool CompilationEngine::isInList(const std::vector<std::string>& list, const std::string& target) {
     return std::find(list.begin(), list.end(), target) != list.end();
+}
+
+bool CompilationEngine::isType(std::shared_ptr<XMLElement> element) {
+    const std::vector<std::string> typeList = {"int", "char", "boolean"};
+    std::cout << element->tagName << element->content << std::endl;
+    // 予約語の型名のパターン
+    if (element->tagName == "keyword" && isInList(typeList, element->content)) {
+        return true;
+    }
+
+    // クラス名のパターン
+    if (element->tagName == "identifier" && isInList(classNames, element->content)){
+        return true;
+    }
+    return false;
 }
