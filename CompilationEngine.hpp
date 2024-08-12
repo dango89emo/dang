@@ -2,6 +2,8 @@
 #define COMPILATION_ENGINE_HPP
 
 #include <string>
+#include <vector>
+#include <memory>
 #include "XMLElement.hpp"
 #include "XMLGenerator.hpp"
 
@@ -9,11 +11,14 @@ class CompilationEngine {
 private:
     std::shared_ptr<XMLElement> input_root;
     std::shared_ptr<XMLGenerator> output;
-    std::string xmlPath;
-    std::string className;
+    std::string xmlPath; 
     int i = 0;
+
     bool isInList(const std::vector<std::string>& list, const std::string& target);
     bool isType(std::shared_ptr<XMLElement> element);
+    bool isOperator(const std::string& symbol);
+    bool isKeywordConstant(const std::string& keyword);
+    void compileSubroutineCall();
 
 public:
     CompilationEngine(const std::string& inputPath, const std::string& outputPath);

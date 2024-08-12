@@ -1,4 +1,3 @@
 DangAnalyzer*
 !*.cpp
-tokens.xml
-parsed.xml
+*.xml
